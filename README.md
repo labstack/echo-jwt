@@ -1,18 +1,27 @@
 # Echo JWT middleware
 
-JWT middleware for [Echo](https://github.com/labstack/echo) framework. By default uses [golang-jwt/jwt/v4](https://github.com/golang-jwt/jwt) 
+JWT middleware for [Echo](https://github.com/labstack/echo) framework. This middleware uses by default [golang-jwt/jwt/v4](https://github.com/golang-jwt/jwt) 
 as JWT implementation.
+
+## Versioning
+
+This repository does not use semantic versioning. MAJOR version tracks which Echo version should be used. MINOR version
+tracks API changes (possibly backwards incompatible) and PATCH version is incremented for fixes.
+
+For Echo `v4` use `v4.x.y` releases.
+
+`main` branch is compatible with the latest Echo version.
 
 ## Usage
 
 Add JWT middleware dependency with go modules
 ```bash
-go get github.com/labstack/echo-jwt
+go get github.com/labstack/echo-jwt/v4
 ```
 
 Use as import statement
 ```go
-import "github.com/labstack/echo-jwt"
+import "github.com/labstack/echo-jwt/v4"
 ```
 
 Add middleware in simplified form, by providing only the secret key
@@ -31,6 +40,10 @@ e.Use(echojwt.WithConfig(echojwt.Config{
 
 Extract token in handler
 ```go
+import "github.com/golang-jwt/jwt/v4"
+
+// ...
+
 e.GET("/", func(c echo.Context) error {
   token, ok := c.Get("user").(*jwt.Token) // by default token is stored under `user` key
   if !ok {
@@ -52,7 +65,7 @@ package main
 import (
 	"errors"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/labstack/echo-jwt"
+	"github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"log"
