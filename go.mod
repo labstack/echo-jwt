@@ -1,4 +1,4 @@
-module github.com/labstack/echo-jwt
+module github.com/labstack/echo-jwt/v4
 
 go 1.17
 
