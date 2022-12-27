@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func ExampleJWTWithConfig_usage() {
+func ExampleWithConfig_usage() {
 	e := echo.New()
 
 	e.Use(echojwt.WithConfig(echojwt.Config{
