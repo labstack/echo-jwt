@@ -9,6 +9,8 @@ This repository does not use semantic versioning. MAJOR version tracks which Ech
 tracks API changes (possibly backwards incompatible) and PATCH version is incremented for fixes.
 
 For Echo `v4` use `v4.x.y` releases.
+Minimal needed Echo versions:
+* `v4.0.0` needs Echo `v4.7.0+`
 
 `main` branch is compatible with the latest Echo version.
 

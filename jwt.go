@@ -173,7 +173,7 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 	if config.ParseTokenFunc == nil {
 		config.ParseTokenFunc = config.defaultParseTokenFunc
 	}
-	extractors, err := middleware.CreateExtractors(config.TokenLookup)
+	extractors, err := CreateExtractors(config.TokenLookup)
 	if err != nil {
 		return nil, err
 	}
@@ -226,9 +226,9 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 				return tmpErr
 			}
 			if lastTokenErr == nil {
-				return ErrJWTMissing.WithInternal(err)
+				return echo.NewHTTPError(http.StatusUnauthorized, "missing or malformed jwt").SetInternal(err)
 			}
-			return ErrJWTInvalid.WithInternal(err)
+			return echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt").SetInternal(err)
 		}
 	}, nil
 }
