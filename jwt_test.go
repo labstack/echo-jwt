@@ -6,13 +6,14 @@ package echojwt
 import (
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/stretchr/testify/assert"
@@ -750,4 +751,30 @@ func TestWithConfig_panic(t *testing.T) {
 			WithConfig(Config{})
 		},
 	)
+}
+
+func TestToMiddlewareRace(t *testing.T) {
+	e := echo.New()
+	mw, err := Config{
+		ParseTokenFunc: func(c echo.Context, auth string) (interface{}, error) {
+			return auth, nil
+		},
+		SuccessHandler: func(c echo.Context) {
+			c.Set("success", "yes")
+		},
+	}.ToMiddleware()
+	assert.NoError(t, err)
+
+	dummyHandler := func(_ echo.Context) error { return nil }
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 10; j++ {
+				mw(dummyHandler)(e.NewContext(httptest.NewRequest("", "/", nil), httptest.NewRecorder()))
+			}
+		}()
+	}
+	wg.Wait()
 }
