@@ -1,3 +1,9 @@
+[![Sourcegraph](https://sourcegraph.com/github.com/labstack/echo-jwt/-/badge.svg?style=flat-square)](https://sourcegraph.com/github.com/labstack/echo-jwt?badge)
+[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://pkg.go.dev/github.com/labstack/echo-jwt/v4)
+[![Go Report Card](https://goreportcard.com/badge/github.com/labstack/echo-jwt?style=flat-square)](https://goreportcard.com/report/github.com/labstack/echo-jwt)
+[![Codecov](https://img.shields.io/codecov/c/github/labstack/echo-jwt.svg?style=flat-square)](https://codecov.io/gh/labstack/echo-jwt)
+[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/labstack/echo-jwt/master/LICENSE)
+
 # Echo JWT middleware
 
 JWT middleware for [Echo](https://github.com/labstack/echo) framework. This middleware uses by default [golang-jwt/jwt/v4](https://github.com/golang-jwt/jwt) 
