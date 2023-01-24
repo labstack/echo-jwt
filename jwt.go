@@ -6,10 +6,11 @@ package echojwt
 import (
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"net/http"
 )
 
 // Config defines the config for JWT middleware.
@@ -224,7 +225,7 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			// prioritize token errors over extracting errors
-			err = lastTokenErr
+			err := lastTokenErr
 			if err == nil {
 				err = lastExtractorErr
 			}
