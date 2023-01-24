@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -753,28 +752,54 @@ func TestWithConfig_panic(t *testing.T) {
 	)
 }
 
-func TestToMiddlewareRace(t *testing.T) {
-	e := echo.New()
-	mw, err := Config{
-		ParseTokenFunc: func(c echo.Context, auth string) (interface{}, error) {
-			return auth, nil
+func TestDataRacesOnParallelExecution(t *testing.T) {
+	var testCases = []struct {
+		name       string
+		whenHeader string
+		expectCode int
+	}{ // run multiple cases in parallel to catch data races
+		{
+			name:       "ok",
+			whenHeader: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ",
+			expectCode: http.StatusTeapot,
 		},
-		SuccessHandler: func(c echo.Context) {
-			c.Set("success", "yes")
+		{
+			name:       "nok",
+			whenHeader: "Bearer x.x.x",
+			expectCode: http.StatusUnauthorized,
 		},
-	}.ToMiddleware()
-	assert.NoError(t, err)
-
-	dummyHandler := func(_ echo.Context) error { return nil }
-	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < 10; j++ {
-				mw(dummyHandler)(e.NewContext(httptest.NewRequest("", "/", nil), httptest.NewRecorder()))
-			}
-		}()
+		{
+			name:       "nok, simulatenous error",
+			whenHeader: "Bearer x.x.x",
+			expectCode: http.StatusUnauthorized,
+		},
 	}
-	wg.Wait()
+
+	e := echo.New()
+	e.GET("/", func(c echo.Context) error {
+		token := c.Get("user").(*jwt.Token)
+		return c.JSON(http.StatusTeapot, token.Claims)
+	})
+
+	mw, err := Config{SigningKey: []byte("secret")}.ToMiddleware()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Use(mw)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req.Header.Set(echo.HeaderAuthorization, tc.whenHeader)
+			res := httptest.NewRecorder()
+
+			e.ServeHTTP(res, req)
+
+			if res.Code != tc.expectCode {
+				t.Failed()
+			}
+		})
+	}
 }
