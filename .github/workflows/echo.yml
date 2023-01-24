@@ -9,6 +9,13 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read #  to fetch code (actions/checkout)
+
+env:
+  # run coverage and benchmarks only with the latest Go version
+  LATEST_GO_VERSION: 1.19
+
 jobs:
   test:
     strategy:
@@ -24,8 +31,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-        with:
-          ref: ${{ github.ref }}
 
       - name: Set up Go ${{ matrix.go }}
         uses: actions/setup-go@v3
@@ -35,21 +40,47 @@ jobs:
       - name: Run Tests
         run: go test -race --coverprofile=coverage.coverprofile --covermode=atomic ./...
 
-      - name: Install dependencies for checks
-        run: |
-          go install golang.org/x/lint/golint@latest
-          go install honnef.co/go/tools/cmd/staticcheck@latest
-
-      - name: Run golint
-        run: golint -set_exit_status ./...
-
-      - name: Run staticcheck
-        run: staticcheck ./...
-
       - name: Upload coverage to Codecov
-        if: success() && matrix.go == 1.19 && matrix.os == 'ubuntu-latest'
+        if: success() && matrix.go == env.LATEST_GO_VERSION && matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@v3
         with:
           token:
           fail_ci_if_error: false
 
+  benchmark:
+    needs: test
+    name: Benchmark comparison
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code (Previous)
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.base_ref }}
+          path: previous
+
+      - name: Checkout Code (New)
+        uses: actions/checkout@v3
+        with:
+          path: new
+
+      - name: Set up Go ${{ matrix.go }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.LATEST_GO_VERSION }}
+
+      - name: Install Dependencies
+        run: go install golang.org/x/perf/cmd/benchstat@latest
+
+      - name: Run Benchmark (Previous)
+        run: |
+          cd previous
+          go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
+
+      - name: Run Benchmark (New)
+        run: |
+          cd new
+          go test -run="-" -bench=".*" -count=8 ./... > benchmark.txt
+
+      - name: Run Benchstat
+        run: |
+          benchstat previous/benchmark.txt new/benchmark.txt
