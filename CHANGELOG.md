@@ -1,5 +1,12 @@
 # Changelog
 
+## v4.1.0 - 2023-01-26
+
+**Enhancements**
+
+* Add TokenExtractionError and TokenParsingError types to help distinguishing error source in ErrorHandler [#6](https://github.com/labstack/echo-jwt/pull/6)
+
+
 ## v4.0.1 - 2023-01-24
 
 **Fixes**

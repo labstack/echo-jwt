@@ -18,6 +18,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestTokenParsingError_Is(t *testing.T) {
+	err := errors.New("parsing error")
+	given := echo.ErrUnauthorized.SetInternal(&TokenParsingError{Err: err})
+
+	assert.True(t, errors.Is(given, ErrJWTInvalid))
+	assert.True(t, errors.Is(given, err))
+}
+
+func TestTokenParsingError_Error(t *testing.T) {
+	given := &TokenParsingError{Err: errors.New("parsing error")}
+	assert.Equal(t, "parsing error", given.Error())
+}
+
+func TestTokenParsingError_Unwrap(t *testing.T) {
+	inner := errors.New("parsing error")
+	given := &TokenParsingError{Err: inner}
+	assert.Equal(t, inner, given.Unwrap())
+}
+
 // jwtCustomInfo defines some custom types we're going to use within our tokens.
 type jwtCustomInfo struct {
 	Name  string `json:"name"`
@@ -311,6 +330,7 @@ func TestJWTwithKID(t *testing.T) {
 	handler := func(c echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
+
 	firstToken := "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6ImZpcnN0T25lIn0.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.w5VGpHOe0jlNgf7jMVLHzIYH_XULmpUlreJnilwSkWk"
 	secondToken := "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6InNlY29uZE9uZSJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.sdghDYQ85jdh0hgQ6bKbMguLI_NSPYWjkhVJkee-yZM"
 	wrongToken := "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6InNlY29uZE9uZSJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.RyhLybtVLpoewF6nz9YN79oXo32kAtgUxp8FNwTkb90"
@@ -320,77 +340,81 @@ func TestJWTwithKID(t *testing.T) {
 	staticSecret := []byte("static_secret")
 	invalidStaticSecret := []byte("invalid_secret")
 
-	for _, tc := range []struct {
+	var testCases = []struct {
 		expErrCode int // 0 for Success
 		config     Config
 		hdrAuth    string
-		info       string
+		name       string
 	}{
 		{
+			name:    "First token valid",
 			hdrAuth: "Bearer " + firstToken,
 			config:  Config{SigningKeys: validKeys},
-			info:    "First token valid",
 		},
 		{
+			name:    "Second token valid",
 			hdrAuth: "Bearer " + secondToken,
 			config:  Config{SigningKeys: validKeys},
-			info:    "Second token valid",
 		},
 		{
+			name:       "Wrong key id token",
 			expErrCode: http.StatusUnauthorized,
 			hdrAuth:    "Bearer " + wrongToken,
 			config:     Config{SigningKeys: validKeys},
-			info:       "Wrong key id token",
 		},
 		{
+			name:    "Valid static secret token",
 			hdrAuth: "Bearer " + staticToken,
 			config:  Config{SigningKey: staticSecret},
-			info:    "Valid static secret token",
 		},
 		{
+			name:       "Invalid static secret",
 			expErrCode: http.StatusUnauthorized,
 			hdrAuth:    "Bearer " + staticToken,
 			config:     Config{SigningKey: invalidStaticSecret},
-			info:       "Invalid static secret",
 		},
 		{
+			name:       "Invalid keys first token",
 			expErrCode: http.StatusUnauthorized,
 			hdrAuth:    "Bearer " + firstToken,
 			config:     Config{SigningKeys: invalidKeys},
-			info:       "Invalid keys first token",
 		},
 		{
+			name:       "Invalid keys second token",
 			expErrCode: http.StatusUnauthorized,
 			hdrAuth:    "Bearer " + secondToken,
 			config:     Config{SigningKeys: invalidKeys},
-			info:       "Invalid keys second token",
 		},
-	} {
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		res := httptest.NewRecorder()
-		req.Header.Set(echo.HeaderAuthorization, tc.hdrAuth)
-		c := e.NewContext(req, res)
+	}
 
-		if tc.expErrCode != 0 {
-			h := WithConfig(tc.config)(handler)
-			he := h(c).(*echo.HTTPError)
-			assert.Equal(t, tc.expErrCode, he.Code, tc.info)
-			continue
-		}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			res := httptest.NewRecorder()
+			req.Header.Set(echo.HeaderAuthorization, tc.hdrAuth)
+			c := e.NewContext(req, res)
 
-		h := WithConfig(tc.config)(handler)
-		if assert.NoError(t, h(c), tc.info) {
-			user := c.Get("user").(*jwt.Token)
-			switch claims := user.Claims.(type) {
-			case jwt.MapClaims:
-				assert.Equal(t, claims["name"], "John Doe", tc.info)
-			case *jwtCustomClaims:
-				assert.Equal(t, claims.Name, "John Doe", tc.info)
-				assert.Equal(t, claims.Admin, true, tc.info)
-			default:
-				panic("unexpected type of claims")
+			if tc.expErrCode != 0 {
+				h := WithConfig(tc.config)(handler)
+				he := h(c).(*echo.HTTPError)
+				assert.Equal(t, tc.expErrCode, he.Code)
+				return
 			}
-		}
+
+			h := WithConfig(tc.config)(handler)
+			if assert.NoError(t, h(c), tc.name) {
+				user := c.Get("user").(*jwt.Token)
+				switch claims := user.Claims.(type) {
+				case jwt.MapClaims:
+					assert.Equal(t, claims["name"], "John Doe")
+				case *jwtCustomClaims:
+					assert.Equal(t, claims.Name, "John Doe")
+					assert.Equal(t, claims.Admin, true)
+				default:
+					panic("unexpected type of claims")
+				}
+			}
+		})
 	}
 }
 
@@ -441,11 +465,12 @@ func TestConfig_BeforeFunc(t *testing.T) {
 	assert.True(t, isCalled)
 }
 
-func TestConfig_extractorErrorHandling(t *testing.T) {
+func TestConfig_ErrorHandling(t *testing.T) {
 	var testCases = []struct {
-		name             string
-		given            Config
-		expectStatusCode int
+		name           string
+		given          Config
+		whenAuthHeader string
+		expectError    string
 	}{
 		{
 			name: "ok, ErrorHandler is executed",
@@ -455,24 +480,63 @@ func TestConfig_extractorErrorHandling(t *testing.T) {
 					return echo.NewHTTPError(http.StatusTeapot, "custom_error")
 				},
 			},
-			expectStatusCode: http.StatusTeapot,
+			expectError: "code=418, message=custom_error",
+		},
+		{
+			name: "ok, extractor errors are distinguishable as TokenExtractionError",
+			given: Config{
+				SigningKey: []byte("secret"),
+				ErrorHandler: func(c echo.Context, err error) error {
+					var extratorErr *TokenExtractionError
+					if !errors.As(err, &extratorErr) {
+						panic("must get TokenExtractionError")
+					}
+					return err
+				},
+			},
+			expectError: "missing value in request header",
+		},
+		{
+			name: "ok, token parsing errors are distinguishable as TokenParsingError",
+			given: Config{
+				SigningKey: []byte("secret"),
+				ErrorHandler: func(c echo.Context, err error) error {
+					var tpErr *TokenParsingError
+					if !errors.As(err, &tpErr) {
+						panic("must get TokenParsingError")
+					}
+					var tErr *TokenError
+					if !errors.As(err, &tErr) {
+						panic("must get TokenError")
+					}
+					return err
+				},
+			},
+			whenAuthHeader: "Bearer x.x.x",
+			expectError:    "illegal base64 data at input byte 0",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
-			e.GET("/", func(c echo.Context) error {
+			h := func(c echo.Context) error {
 				return c.String(http.StatusNotImplemented, "should not end up here")
-			})
+			}
 
-			e.Use(WithConfig(tc.given))
+			jwtMiddlewareFunc := WithConfig(tc.given)
 
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			res := httptest.NewRecorder()
-			e.ServeHTTP(res, req)
+			if tc.whenAuthHeader != "" {
+				req.Header.Set(echo.HeaderAuthorization, tc.whenAuthHeader)
 
-			assert.Equal(t, tc.expectStatusCode, res.Code)
+			}
+			res := httptest.NewRecorder()
+			c := e.NewContext(req, res)
+
+			err := jwtMiddlewareFunc(h)(c)
+
+			assert.EqualError(t, err, tc.expectError)
 		})
 	}
 }
@@ -622,8 +686,9 @@ func TestJWTWithConfig_ContinueOnIgnoredError(t *testing.T) {
 			name:                        "ok, missing header, callNext and set public_token from error handler",
 			givenContinueOnIgnoredError: true,
 			givenErrorHandler: func(c echo.Context, err error) error {
-				if errors.Is(err, ErrJWTMissing) {
-					panic("must get ErrJWTMissing")
+				var extratorErr *TokenExtractionError
+				if !errors.As(err, &extratorErr) {
+					panic("must get TokenExtractionError")
 				}
 				c.Set("user", "public_token")
 				return nil

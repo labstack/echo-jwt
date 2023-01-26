@@ -119,6 +119,20 @@ var ErrJWTMissing = echo.NewHTTPError(http.StatusUnauthorized, "missing or malfo
 // ErrJWTInvalid denotes an error raised when JWT token value is invalid or expired
 var ErrJWTInvalid = echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt")
 
+// TokenParsingError is catch all type for all errors that occur when token is parsed. In case of library default
+// token parsing functions are being used this error instance wraps TokenError. This helps to distinguish extractor
+// errors from token parsing errors even if custom extractors or token parsing functions are being used that have
+// their own custom errors.
+type TokenParsingError struct {
+	Err error
+}
+
+// Is checks if target error is same as TokenParsingError
+func (e TokenParsingError) Is(target error) bool { return target == ErrJWTInvalid } // to provide some compatibility with older error handling logic
+
+func (e *TokenParsingError) Error() string { return e.Err.Error() }
+func (e *TokenParsingError) Unwrap() error { return e.Err }
+
 // TokenError is used to return error with error occurred JWT token when processing JWT token
 type TokenError struct {
 	Token *jwt.Token
@@ -184,9 +198,9 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 	if config.ParseTokenFunc == nil {
 		config.ParseTokenFunc = config.defaultParseTokenFunc
 	}
-	extractors, err := CreateExtractors(config.TokenLookup)
-	if err != nil {
-		return nil, err
+	extractors, ceErr := CreateExtractors(config.TokenLookup)
+	if ceErr != nil {
+		return nil, ceErr
 	}
 	if len(config.TokenLookupFuncs) > 0 {
 		extractors = append(config.TokenLookupFuncs, extractors...)
@@ -224,10 +238,13 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 				}
 			}
 
-			// prioritize token errors over extracting errors
-			err := lastTokenErr
-			if err == nil {
-				err = lastExtractorErr
+			// prioritize token errors over extracting errors as parsing is occurs further in process, meaning we managed to
+			// extract at least one token and failed to parse it
+			var err error
+			if lastTokenErr != nil {
+				err = &TokenParsingError{Err: lastTokenErr}
+			} else if lastExtractorErr != nil {
+				err = &TokenExtractionError{Err: lastExtractorErr}
 			}
 			if config.ErrorHandler != nil {
 				tmpErr := config.ErrorHandler(c, err)
@@ -236,10 +253,12 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 				}
 				return tmpErr
 			}
+
+			message := "invalid or expired jwt"
 			if lastTokenErr == nil {
-				return echo.NewHTTPError(http.StatusUnauthorized, "missing or malformed jwt").SetInternal(err)
+				message = "missing or malformed jwt"
 			}
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt").SetInternal(err)
+			return echo.NewHTTPError(http.StatusUnauthorized, message).SetInternal(err)
 		}
 	}, nil
 }
