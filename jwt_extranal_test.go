@@ -6,7 +6,7 @@ package echojwt_test
 import (
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"io"
@@ -25,7 +25,7 @@ func ExampleWithConfig_usage() {
 
 	e.GET("/", func(c echo.Context) error {
 		// make sure that your imports are correct versions. for example if you use `"github.com/golang-jwt/jwt"` as
-		// import this cast will fail and `"github.com/golang-jwt/jwt/v4"` will succeed.
+		// import this cast will fail and `"github.com/golang-jwt/jwt/v5"` will succeed.
 		// Although `.(*jwt.Token)` looks exactly the same for both packages but this struct is still different
 		token, ok := c.Get("user").(*jwt.Token) // by default token is stored under `user` key
 		if !ok {

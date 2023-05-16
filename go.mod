@@ -3,7 +3,7 @@ module github.com/labstack/echo-jwt/v4
 go 1.17
 
 require (
-	github.com/golang-jwt/jwt/v4 v4.4.3
+	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/stretchr/testify v1.8.1
 )

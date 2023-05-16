@@ -6,7 +6,7 @@
 
 # Echo JWT middleware
 
-JWT middleware for [Echo](https://github.com/labstack/echo) framework. This middleware uses by default [golang-jwt/jwt/v4](https://github.com/golang-jwt/jwt) 
+JWT middleware for [Echo](https://github.com/labstack/echo) framework. This middleware uses by default [golang-jwt/jwt/v5](https://github.com/golang-jwt/jwt) 
 as JWT implementation.
 
 ## Versioning
@@ -48,7 +48,7 @@ e.Use(echojwt.WithConfig(echojwt.Config{
 
 Extract token in handler
 ```go
-import "github.com/golang-jwt/jwt/v4"
+import "github.com/golang-jwt/jwt/v5"
 
 // ...
 
@@ -72,7 +72,7 @@ package main
 
 import (
 	"errors"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"

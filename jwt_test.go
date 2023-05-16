@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/stretchr/testify/assert"
@@ -110,7 +110,7 @@ func TestJWT_combinations(t *testing.T) {
 				SigningKey:    validKey,
 				SigningMethod: "RS256",
 			},
-			expectError: "code=401, message=invalid or expired jwt, internal=unexpected jwt signing method=HS256",
+			expectError: "code=401, message=invalid or expired jwt, internal=token is unverifiable: error while executing keyfunc: unexpected jwt signing method=HS256",
 		},
 		{
 			name:    "Invalid key",
@@ -118,7 +118,7 @@ func TestJWT_combinations(t *testing.T) {
 			config: Config{
 				SigningKey: invalidKey,
 			},
-			expectError: "code=401, message=invalid or expired jwt, internal=signature is invalid",
+			expectError: "code=401, message=invalid or expired jwt, internal=token signature is invalid: signature is invalid",
 		},
 		{
 			name:    "Valid JWT",
@@ -189,7 +189,7 @@ func TestJWT_combinations(t *testing.T) {
 				TokenLookup: "query:jwt",
 			},
 			reqURL:      "/?a=b&jwt=invalid-token",
-			expectError: "code=401, message=invalid or expired jwt, internal=token contains an invalid number of segments",
+			expectError: "code=401, message=invalid or expired jwt, internal=token is malformed: token contains an invalid number of segments",
 		},
 		{
 			name: "Empty query",
@@ -231,7 +231,7 @@ func TestJWT_combinations(t *testing.T) {
 				TokenLookup: "cookie:jwt",
 			},
 			hdrCookie:   "jwt=invalid",
-			expectError: "code=401, message=invalid or expired jwt, internal=token contains an invalid number of segments",
+			expectError: "code=401, message=invalid or expired jwt, internal=token is malformed: token contains an invalid number of segments",
 		},
 		{
 			name: "Empty cookie",
@@ -256,7 +256,7 @@ func TestJWT_combinations(t *testing.T) {
 				TokenLookup: "form:jwt",
 			},
 			formValues:  map[string]string{"jwt": "invalid"},
-			expectError: "code=401, message=invalid or expired jwt, internal=token contains an invalid number of segments",
+			expectError: "code=401, message=invalid or expired jwt, internal=token is malformed: token contains an invalid number of segments",
 		},
 		{
 			name: "Empty form field",
@@ -513,7 +513,7 @@ func TestConfig_ErrorHandling(t *testing.T) {
 				},
 			},
 			whenAuthHeader: "Bearer x.x.x",
-			expectError:    "illegal base64 data at input byte 0",
+			expectError:    "token is malformed: could not base64 decode header: illegal base64 data at input byte 0",
 		},
 	}
 
