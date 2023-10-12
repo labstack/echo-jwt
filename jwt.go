@@ -246,11 +246,11 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 			} else if lastExtractorErr != nil {
 				err = &TokenExtractionError{Err: lastExtractorErr}
 			}
+			if config.ContinueOnIgnoredError {
+				return next(c)
+			}
 			if config.ErrorHandler != nil {
 				tmpErr := config.ErrorHandler(c, err)
-				if config.ContinueOnIgnoredError && tmpErr == nil {
-					return next(c)
-				}
 				return tmpErr
 			}
 
