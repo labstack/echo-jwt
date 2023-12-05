@@ -12,15 +12,15 @@ import (
 	"strings"
 	"testing"
 
+	echo "github.com/datumforge/echox"
+	"github.com/datumforge/echox/middleware"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTokenParsingError_Is(t *testing.T) {
 	err := errors.New("parsing error")
-	given := echo.ErrUnauthorized.SetInternal(&TokenParsingError{Err: err})
+	given := echo.ErrUnauthorized.WithInternal(&TokenParsingError{Err: err})
 
 	assert.True(t, errors.Is(given, ErrJWTInvalid))
 	assert.True(t, errors.Is(given, err))
@@ -292,8 +292,11 @@ func TestJWT_combinations(t *testing.T) {
 			c := e.NewContext(req, res)
 
 			if tc.reqURL == "/"+token {
-				c.SetParamNames("jwt")
-				c.SetParamValues(token)
+				param := echo.PathParam{
+					Name:  "jwt",
+					Value: token,
+				}
+				c.SetPathParams(echo.PathParams{param})
 			}
 
 			mw, err := tc.config.ToMiddleware()
@@ -793,8 +796,8 @@ func TestConfig_TokenLookupFuncs(t *testing.T) {
 	e.Use(WithConfig(Config{
 		SigningKey: []byte("secret"),
 		TokenLookupFuncs: []middleware.ValuesExtractor{
-			func(c echo.Context) ([]string, error) {
-				return []string{c.Request().Header.Get("X-API-Key")}, nil
+			func(c echo.Context) ([]string, middleware.ExtractorSource, error) {
+				return []string{c.Request().Header.Get("X-API-Key")}, middleware.ExtractorSourceHeader, nil
 			},
 		},
 	}))

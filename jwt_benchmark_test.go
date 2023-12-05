@@ -1,11 +1,13 @@
 package echojwt
 
 import (
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/golang-jwt/jwt/v5"
+
+	echo "github.com/datumforge/echox"
 )
 
 func BenchmarkJWTSuccessPath(b *testing.B) {

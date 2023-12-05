@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"net/http"
 
+	echo "github.com/datumforge/echox"
+	"github.com/datumforge/echox/middleware"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 )
 
 // Config defines the config for JWT middleware.
@@ -198,7 +198,7 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 	if config.ParseTokenFunc == nil {
 		config.ParseTokenFunc = config.defaultParseTokenFunc
 	}
-	extractors, ceErr := CreateExtractors(config.TokenLookup)
+	extractors, ceErr := middleware.CreateExtractors(config.TokenLookup)
 	if ceErr != nil {
 		return nil, ceErr
 	}
@@ -218,7 +218,7 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 			var lastExtractorErr error
 			var lastTokenErr error
 			for _, extractor := range extractors {
-				auths, extrErr := extractor(c)
+				auths, _, extrErr := extractor(c)
 				if extrErr != nil {
 					lastExtractorErr = extrErr
 					continue
@@ -255,10 +255,10 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			if lastTokenErr == nil {
-				return echo.NewHTTPError(http.StatusBadRequest, "missing or malformed jwt").SetInternal(err)
+				return echo.NewHTTPError(http.StatusBadRequest, "missing or malformed jwt").WithInternal(err)
 			}
 
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt").SetInternal(err)
+			return echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt").WithInternal(err)
 		}
 	}, nil
 }

@@ -6,14 +6,15 @@ package echojwt_test
 import (
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
-	echojwt "github.com/labstack/echo-jwt/v4"
-	"github.com/labstack/echo/v4"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"time"
+
+	echojwt "github.com/datumforge/datum/echo-jwt/v5"
+	echo "github.com/datumforge/echox"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func ExampleWithConfig_usage() {
