@@ -282,7 +282,8 @@ func TestJWT_combinations(t *testing.T) {
 				}
 				req = httptest.NewRequest(http.MethodPost, tc.reqURL, strings.NewReader(form.Encode()))
 				req.Header.Set(echo.HeaderContentType, "application/x-www-form-urlencoded")
-				req.ParseForm()
+				err := req.ParseForm()
+				assert.NoError(t, err)
 			} else {
 				req = httptest.NewRequest(http.MethodGet, tc.reqURL, nil)
 			}
