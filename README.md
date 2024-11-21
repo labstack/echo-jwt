@@ -67,8 +67,8 @@ e.GET("/", func(c echo.Context) error {
 
 ## IMPORTANT: Integration Testing with JWT Library
 
-Ensure that your project includes at least one integration test to detect changes in major versions of the JWT library early.
-This is crucial because type assertions like token := c.Get("user").(*jwt.Token) may fail silently if the imported version of the JWT library (e.g., import "github.com/golang-jwt/jwt/v5") differs from the version used internally by dependencies (e.g., echo-jwt may now use v6). Such discrepancies can lead to invalid casts, causing your handlers to panic or throw errors. Integration tests help safeguard against these version mismatches.
+Ensure that your project includes at least one integration test to detect changes in major versions of the `golang-jwt/jwt` library early.
+This is crucial because type assertions like `token := c.Get("user").(*jwt.Token)` may fail silently if the imported version of the JWT library (e.g., `import "github.com/golang-jwt/jwt/v5"`) differs from the version used internally by dependencies (e.g., echo-jwt may now use `v6`). Such discrepancies can lead to invalid casts, causing your handlers to panic or throw errors. Integration tests help safeguard against these version mismatches.
 
 ```go
 func TestIntegrationMiddlewareWithHandler(t *testing.T) {
@@ -77,7 +77,7 @@ func TestIntegrationMiddlewareWithHandler(t *testing.T) {
 		SigningKey: []byte("secret"),
 	}))
 
-  // use handler that gets token from context to fail your CI flow when JWT library version changes 
+  // use handler that gets token from context to fail your CI flow when `golang-jwt/jwt` library version changes 
   // a) `token, ok := c.Get("user").(*jwt.Token)`
   // b) `token := c.Get("user").(*jwt.Token)`
 	e.GET("/example", exampleHandler) 
