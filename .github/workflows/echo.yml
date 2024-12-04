@@ -14,7 +14,7 @@ permissions:
 
 env:
   # run coverage and benchmarks only with the latest Go version
-  LATEST_GO_VERSION: "1.22"
+  LATEST_GO_VERSION: "1.23"
 
 jobs:
   test:
