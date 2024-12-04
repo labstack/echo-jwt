@@ -1,5 +1,12 @@
 # Changelog
 
+## v4.3.0 - 2024-12-04
+
+**Enhancements**
+
+* Update Echo dependency to v4.13.0 by @aldas in [#28](https://github.com/labstack/echo-jwt/pull/28)
+
+
 ## v4.2.1 - 2024-12-04
 
 **Enhancements**
