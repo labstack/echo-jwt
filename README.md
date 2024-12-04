@@ -14,6 +14,9 @@ as JWT implementation.
 This repository does not use semantic versioning. MAJOR version tracks which Echo version should be used. MINOR version
 tracks API changes (possibly backwards incompatible) and PATCH version is incremented for fixes.
 
+NB: When `golang-jwt` MAJOR version changes this library will release MINOR version with **breaking change**. Always 
+add at least one integration test in your project.
+
 For Echo `v4` use `v4.x.y` releases.
 Minimal needed Echo versions:
 * `v4.0.0` needs Echo `v4.7.0+`
