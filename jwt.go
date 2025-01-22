@@ -57,6 +57,7 @@ type Config struct {
 	SigningKeys map[string]interface{}
 
 	// Signing method used to check the token's signing algorithm.
+	// SigningMethod is not checked when a user-defined KeyFunc is provided.
 	// Optional. Default value HS256.
 	SigningMethod string
 
