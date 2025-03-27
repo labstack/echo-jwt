@@ -114,7 +114,7 @@ const (
 )
 
 // ErrJWTMissing denotes an error raised when JWT token value could not be extracted from request
-var ErrJWTMissing = echo.NewHTTPError(http.StatusUnauthorized, "missing or malformed jwt")
+var ErrJWTMissing = echo.NewHTTPError(http.StatusBadRequest, "missing or malformed jwt")
 
 // ErrJWTInvalid denotes an error raised when JWT token value is invalid or expired
 var ErrJWTInvalid = echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt")
@@ -255,10 +255,10 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			if lastTokenErr == nil {
-				return echo.NewHTTPError(http.StatusBadRequest, "missing or malformed jwt").SetInternal(err)
+				return ErrJWTMissing.WithInternal(err)
 			}
 
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt").SetInternal(err)
+			return ErrJWTInvalid.WithInternal(err)
 		}
 	}, nil
 }
