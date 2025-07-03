@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
@@ -625,6 +626,58 @@ func TestConfig_custom_ParseTokenFunc_Keyfunc(t *testing.T) {
 	res := httptest.NewRecorder()
 	e.ServeHTTP(res, req)
 
+	assert.Equal(t, http.StatusTeapot, res.Code)
+}
+
+func TestConfig_parseOptions(t *testing.T) {
+	e := echo.New()
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusTeapot, "test")
+	})
+
+	signingKey := []byte("secret")
+	expiredClaim := jwt.MapClaims{
+		"admin": true,
+		"name":  "John Doe",
+		"sub":   "1234567890",
+		"exp":   time.Now().Add(-10 * time.Second).Unix(), // expired 10 seconds ago
+	}
+	testClaim := jwt.MapClaims{
+		"admin": true,
+		"name":  "John Doe",
+		"sub":   "1234567890",
+		"exp":   time.Now().Add(-2 * time.Second).Unix(),
+	}
+
+	expiredToken := jwt.NewWithClaims(jwt.SigningMethodHS256, expiredClaim)
+	expiredTokenString, err := expiredToken.SignedString(signingKey)
+	if err != nil {
+		t.Fatalf("failed to sign expired token: %v", err)
+	}
+
+	testToken := jwt.NewWithClaims(jwt.SigningMethodHS256, testClaim)
+	testTokenString, err := testToken.SignedString(signingKey)
+	if err != nil {
+		t.Fatalf("failed to sign test token: %v", err)
+	}
+
+	config := Config{
+		SigningKey:  signingKey,
+		ParserOption: []jwt.ParserOption{jwt.WithLeeway(5 * time.Second)}, // allow 5 seconds leeway for token expiration
+	}
+
+	e.Use(WithConfig(config))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAuthorization, "Bearer "+expiredTokenString)
+	res := httptest.NewRecorder()
+	e.ServeHTTP(res, req)
+	assert.Equal(t, http.StatusUnauthorized, res.Code)
+
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set(echo.HeaderAuthorization, "Bearer "+testTokenString)
+	res = httptest.NewRecorder()
+	e.ServeHTTP(res, req)
 	assert.Equal(t, http.StatusTeapot, res.Code)
 }
 
