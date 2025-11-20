@@ -1,5 +1,13 @@
 # Changelog
 
+## v4.4.0 - 2025-11-20
+
+**Enhancements**
+
+* Revert 'Return HTTP status 400 if missing JWT' PR to return 401
+* Updated dependencies
+
+
 ## v4.3.1 - 2025-03-22
 
 **Security**
