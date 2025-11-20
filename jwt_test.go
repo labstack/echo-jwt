@@ -156,14 +156,14 @@ func TestJWT_combinations(t *testing.T) {
 			config: Config{
 				SigningKey: validKey,
 			},
-			expectError: "code=400, message=missing or malformed jwt, internal=invalid value in request header",
+			expectError: "code=401, message=missing or malformed jwt, internal=invalid value in request header",
 		},
 		{
 			name: "Empty header auth field",
 			config: Config{
 				SigningKey: validKey,
 			},
-			expectError: "code=400, message=missing or malformed jwt, internal=invalid value in request header",
+			expectError: "code=401, message=missing or malformed jwt, internal=invalid value in request header",
 		},
 		{
 			name: "Valid query method",
@@ -180,7 +180,7 @@ func TestJWT_combinations(t *testing.T) {
 				TokenLookup: "query:jwt",
 			},
 			reqURL:      "/?a=b&jwtxyz=" + token,
-			expectError: "code=400, message=missing or malformed jwt, internal=missing value in the query string",
+			expectError: "code=401, message=missing or malformed jwt, internal=missing value in the query string",
 		},
 		{
 			name: "Invalid query param value",
@@ -198,7 +198,7 @@ func TestJWT_combinations(t *testing.T) {
 				TokenLookup: "query:jwt",
 			},
 			reqURL:      "/?a=b",
-			expectError: "code=400, message=missing or malformed jwt, internal=missing value in the query string",
+			expectError: "code=401, message=missing or malformed jwt, internal=missing value in the query string",
 		},
 		{
 			config: Config{
@@ -239,7 +239,7 @@ func TestJWT_combinations(t *testing.T) {
 				SigningKey:  validKey,
 				TokenLookup: "cookie:jwt",
 			},
-			expectError: "code=400, message=missing or malformed jwt, internal=missing value in cookies",
+			expectError: "code=401, message=missing or malformed jwt, internal=missing value in cookies",
 		},
 		{
 			name: "Valid form method",
@@ -264,7 +264,7 @@ func TestJWT_combinations(t *testing.T) {
 				SigningKey:  validKey,
 				TokenLookup: "form:jwt",
 			},
-			expectError: "code=400, message=missing or malformed jwt, internal=missing value in the form",
+			expectError: "code=401, message=missing or malformed jwt, internal=missing value in the form",
 		},
 	}
 

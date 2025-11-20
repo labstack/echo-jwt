@@ -147,8 +147,7 @@ func (e *TokenError) Unwrap() error { return e.Err }
 // JWT returns a JSON Web Token (JWT) auth middleware.
 //
 // For valid token, it sets the user in context and calls next handler.
-// For invalid token, it returns "401 - Unauthorized" error.
-// For missing token, it returns "400 - Bad Request" error.
+// For invalid or missing token, middleware returns "401 - Unauthorized" error.
 //
 // See: https://jwt.io/introduction
 func JWT(signingKey interface{}) echo.MiddlewareFunc {
@@ -158,8 +157,7 @@ func JWT(signingKey interface{}) echo.MiddlewareFunc {
 // WithConfig returns a JSON Web Token (JWT) auth middleware or panics if configuration is invalid.
 //
 // For valid token, it sets the user in context and calls next handler.
-// For invalid token, it returns "401 - Unauthorized" error.
-// For missing token, it returns "400 - Bad Request" error.
+// For invalid or missing token, middleware returns "401 - Unauthorized" error.
 //
 // See: https://jwt.io/introduction
 func WithConfig(config Config) echo.MiddlewareFunc {
@@ -256,7 +254,7 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			if lastTokenErr == nil {
-				return echo.NewHTTPError(http.StatusBadRequest, "missing or malformed jwt").SetInternal(err)
+				return echo.NewHTTPError(http.StatusUnauthorized, "missing or malformed jwt").SetInternal(err)
 			}
 
 			return echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt").SetInternal(err)
