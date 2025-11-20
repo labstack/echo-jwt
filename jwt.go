@@ -254,10 +254,10 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			if lastTokenErr == nil {
-				return echo.NewHTTPError(http.StatusUnauthorized, "missing or malformed jwt").SetInternal(err)
+				return ErrJWTMissing.WithInternal(err)
 			}
 
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid or expired jwt").SetInternal(err)
+			return ErrJWTInvalid.WithInternal(err)
 		}
 	}, nil
 }
