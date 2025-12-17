@@ -103,6 +103,12 @@ type Config struct {
 	// Defaults to implementation using `github.com/golang-jwt/jwt` as JWT implementation library
 	ParseTokenFunc func(c echo.Context, auth string) (interface{}, error)
 
+	// ParserOption defines a list of options that are passed to the JWT parser.
+	// This is used to configure the parser behavior, such as whether to validate the token's expiration time,
+	// whether to validate the token's audience, etc.
+	// Optional. Default value is empty slice.
+	ParserOption []jwt.ParserOption
+
 	// Claims are extendable claims data defining token content. Used by default ParseTokenFunc implementation.
 	// Not used if custom ParseTokenFunc is set.
 	// Optional. Defaults to function returning jwt.MapClaims
@@ -285,7 +291,7 @@ func (config Config) defaultKeyFunc(token *jwt.Token) (interface{}, error) {
 //
 // error returns TokenError.
 func (config Config) defaultParseTokenFunc(c echo.Context, auth string) (interface{}, error) {
-	token, err := jwt.ParseWithClaims(auth, config.NewClaimsFunc(c), config.KeyFunc)
+	token, err := jwt.ParseWithClaims(auth, config.NewClaimsFunc(c), config.KeyFunc, config.ParserOption...)
 	if err != nil {
 		return nil, &TokenError{Token: token, Err: err}
 	}
