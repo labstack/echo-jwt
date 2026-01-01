@@ -9,8 +9,8 @@ import (
 	"net/http"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 )
 
 // Config defines the config for JWT middleware.
@@ -22,7 +22,7 @@ type Config struct {
 	BeforeFunc middleware.BeforeFunc
 
 	// SuccessHandler defines a function which is executed for a valid token.
-	SuccessHandler func(c echo.Context)
+	SuccessHandler func(c *echo.Context)
 
 	// ErrorHandler defines a function which is executed when all lookups have been done and none of them passed Validator
 	// function. ErrorHandler is executed with last missing (ErrExtractionValueMissing) or an invalid key.
@@ -31,7 +31,7 @@ type Config struct {
 	// Note: when error handler swallows the error (returns nil) middleware continues handler chain execution towards handler.
 	// This is useful in cases when portion of your site/api is publicly accessible and has extra features for authorized users
 	// In that case you can use ErrorHandler to set default public JWT token value to request and continue with handler chain.
-	ErrorHandler func(c echo.Context, err error) error
+	ErrorHandler func(c *echo.Context, err error) error
 
 	// ContinueOnIgnoredError allows the next middleware/handler to be called when ErrorHandler decides to
 	// ignore the error (by returning `nil`).
@@ -101,12 +101,12 @@ type Config struct {
 	// ParseTokenFunc defines a user-defined function that parses token from given auth. Returns an error when token
 	// parsing fails or parsed token is invalid.
 	// Defaults to implementation using `github.com/golang-jwt/jwt` as JWT implementation library
-	ParseTokenFunc func(c echo.Context, auth string) (interface{}, error)
+	ParseTokenFunc func(c *echo.Context, auth string) (interface{}, error)
 
 	// Claims are extendable claims data defining token content. Used by default ParseTokenFunc implementation.
 	// Not used if custom ParseTokenFunc is set.
 	// Optional. Defaults to function returning jwt.MapClaims
-	NewClaimsFunc func(c echo.Context) jwt.Claims
+	NewClaimsFunc func(c *echo.Context) jwt.Claims
 }
 
 const (
@@ -133,6 +133,19 @@ func (e TokenParsingError) Is(target error) bool { return target == ErrJWTInvali
 
 func (e *TokenParsingError) Error() string { return e.Err.Error() }
 func (e *TokenParsingError) Unwrap() error { return e.Err }
+
+// TokenExtractionError is catch all type for all errors that occur when the token is extracted from the request. This
+// helps to distinguish extractor errors from token parsing errors even if custom extractors or token parsing functions
+// are being used that have their own custom errors.
+type TokenExtractionError struct {
+	Err error
+}
+
+// Is checks if target error is same as TokenExtractionError
+func (e TokenExtractionError) Is(target error) bool { return target == ErrJWTMissing } // to provide some compatibility with older error handling logic
+
+func (e *TokenExtractionError) Error() string { return e.Err.Error() }
+func (e *TokenExtractionError) Unwrap() error { return e.Err }
 
 // TokenError is used to return error with error occurred JWT token when processing JWT token
 type TokenError struct {
@@ -184,7 +197,7 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 	}
 
 	if config.NewClaimsFunc == nil {
-		config.NewClaimsFunc = func(c echo.Context) jwt.Claims {
+		config.NewClaimsFunc = func(c *echo.Context) jwt.Claims {
 			return jwt.MapClaims{}
 		}
 	}
@@ -197,7 +210,7 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 	if config.ParseTokenFunc == nil {
 		config.ParseTokenFunc = config.defaultParseTokenFunc
 	}
-	extractors, ceErr := CreateExtractors(config.TokenLookup)
+	extractors, ceErr := middleware.CreateExtractors(config.TokenLookup, 1)
 	if ceErr != nil {
 		return nil, ceErr
 	}
@@ -206,7 +219,7 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -217,7 +230,7 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 			var lastExtractorErr error
 			var lastTokenErr error
 			for _, extractor := range extractors {
-				auths, extrErr := extractor(c)
+				auths, _, extrErr := extractor(c)
 				if extrErr != nil {
 					lastExtractorErr = extrErr
 					continue
@@ -254,10 +267,10 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 			}
 
 			if lastTokenErr == nil {
-				return ErrJWTMissing.WithInternal(err)
+				return ErrJWTMissing.Wrap(err)
 			}
 
-			return ErrJWTInvalid.WithInternal(err)
+			return ErrJWTInvalid.Wrap(err)
 		}
 	}, nil
 }
@@ -284,7 +297,7 @@ func (config Config) defaultKeyFunc(token *jwt.Token) (interface{}, error) {
 // defaultParseTokenFunc creates JWTGo implementation for ParseTokenFunc.
 //
 // error returns TokenError.
-func (config Config) defaultParseTokenFunc(c echo.Context, auth string) (interface{}, error) {
+func (config Config) defaultParseTokenFunc(c *echo.Context, auth string) (interface{}, error) {
 	token, err := jwt.ParseWithClaims(auth, config.NewClaimsFunc(c), config.KeyFunc)
 	if err != nil {
 		return nil, &TokenError{Token: token, Err: err}

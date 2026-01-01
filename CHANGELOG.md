@@ -1,5 +1,10 @@
 # Changelog
 
+## v5.0.0 - TBA
+
+* Echo v5 support
+
+
 ## v4.4.0 - 2025-11-20
 
 **Enhancements**

@@ -14,11 +14,13 @@ as JWT implementation.
 This repository does not use semantic versioning. MAJOR version tracks which Echo version should be used. MINOR version
 tracks API changes (possibly backwards incompatible) and PATCH version is incremented for fixes.
 
-NB: When `golang-jwt` MAJOR version changes this library will release MINOR version with **breaking change**. Always 
+NB: When `golang-jwt` MAJOR version changes this library will release MINOR version with **breaking change**. Always
 add at least one integration test in your project.
 
-For Echo `v4` use `v4.x.y` releases.
+For Echo `v5` use `v5.x.y` releases.
 Minimal needed Echo versions:
+
+* `v5.0.0` needs Echo `v5.0.0+`
 * `v4.0.0` needs Echo `v4.7.0+`
 
 `main` branch is compatible with the latest Echo version.
@@ -26,21 +28,25 @@ Minimal needed Echo versions:
 ## Usage
 
 Add JWT middleware dependency with go modules
+
 ```bash
-go get github.com/labstack/echo-jwt/v4
+go get github.com/labstack/echo-jwt/v5
 ```
 
 Use as import statement
+
 ```go
-import "github.com/labstack/echo-jwt/v4"
+import "github.com/labstack/echo-jwt/v5"
 ```
 
 Add middleware in simplified form, by providing only the secret key
+
 ```go
 e.Use(echojwt.JWT([]byte("secret")))
 ```
 
 Add middleware with configuration options
+
 ```go
 e.Use(echojwt.WithConfig(echojwt.Config{
   // ...
@@ -50,15 +56,16 @@ e.Use(echojwt.WithConfig(echojwt.Config{
 ```
 
 Extract token in handler
+
 ```go
 import "github.com/golang-jwt/jwt/v5"
 
 // ...
 
-e.GET("/", func(c echo.Context) error {
-  token, ok := c.Get("user").(*jwt.Token) // by default token is stored under `user` key
-  if !ok {
-    return errors.New("JWT token missing or invalid")
+e.GET("/", func(c *echo.Context) error {
+  token, err := echo.ContextGet[*jwt.Token](c,"user")
+  if err != nil {
+    return echo.ErrUnauthorized.Wrap(err)
   }
   claims, ok := token.Claims.(jwt.MapClaims) // by default claims is of type `jwt.MapClaims`
   if !ok {
@@ -70,8 +77,12 @@ e.GET("/", func(c echo.Context) error {
 
 ## IMPORTANT: Integration Testing with JWT Library
 
-Ensure that your project includes at least one integration test to detect changes in major versions of the `golang-jwt/jwt` library early.
-This is crucial because type assertions like `token := c.Get("user").(*jwt.Token)` may fail silently if the imported version of the JWT library (e.g., `import "github.com/golang-jwt/jwt/v5"`) differs from the version used internally by dependencies (e.g., echo-jwt may now use `v6`). Such discrepancies can lead to invalid casts, causing your handlers to panic or throw errors. Integration tests help safeguard against these version mismatches.
+Ensure that your project includes at least one integration test to detect changes in major versions of the
+`golang-jwt/jwt` library early.
+This is crucial because type assertions like `token := c.Get("user").(*jwt.Token)` may fail silently if the imported
+version of the JWT library (e.g., `import "github.com/golang-jwt/jwt/v5"`) differs from the version used internally by
+dependencies (e.g., echo-jwt may now use `v6`). Such discrepancies can lead to invalid casts, causing your handlers to
+panic or throw errors. Integration tests help safeguard against these version mismatches.
 
 ```go
 func TestIntegrationMiddlewareWithHandler(t *testing.T) {
@@ -97,55 +108,58 @@ func TestIntegrationMiddlewareWithHandler(t *testing.T) {
 }
 ```
 
-
 ## Full example
 
 ```go
 package main
 
 import (
-	"errors"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/labstack/echo-jwt/v4"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"log"
-	"net/http"
+  "errors"
+  "log/slog"
+
+  "github.com/golang-jwt/jwt/v5"
+  "github.com/labstack/echo-jwt/v5"
+  "github.com/labstack/echo/v5"
+  "github.com/labstack/echo/v5/middleware"
+
+  "net/http"
 )
 
 func main() {
-	e := echo.New()
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
+  e := echo.New()
+  e.Use(middleware.RequestLogger())
+  e.Use(middleware.Recover())
 
-	e.Use(echojwt.WithConfig(echojwt.Config{
-		SigningKey: []byte("secret"),
-	}))
+  e.Use(echojwt.WithConfig(echojwt.Config{
+    SigningKey: []byte("secret"),
+  }))
 
-	e.GET("/", func(c echo.Context) error {
-		token, ok := c.Get("user").(*jwt.Token) // by default token is stored under `user` key
-		if !ok {
-			return errors.New("JWT token missing or invalid")
-		}
-		claims, ok := token.Claims.(jwt.MapClaims) // by default claims is of type `jwt.MapClaims`
-		if !ok {
-			return errors.New("failed to cast claims as jwt.MapClaims")
-		}
-		return c.JSON(http.StatusOK, claims)
-	})
+  e.GET("/", func(c *echo.Context) error {
+    token, err := echo.ContextGet[*jwt.Token](c, "user")
+    if err != nil {
+      return echo.ErrUnauthorized.Wrap(err)
+    }
+    claims, ok := token.Claims.(jwt.MapClaims) // by default claims is of type `jwt.MapClaims`
+    if !ok {
+      return errors.New("failed to cast claims as jwt.MapClaims")
+    }
+    return c.JSON(http.StatusOK, claims)
+  })
 
-	if err := e.Start(":8080"); err != http.ErrServerClosed {
-		log.Fatal(err)
-	}
+  if err := e.Start(":8080"); err != nil {
+    slog.Error("Failed to start server", "error", err)
+  }
 }
 ```
 
 Test with
+
 ```bash
 curl -v -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ" http://localhost:8080
 ```
 
 Output should be
+
 ```bash
 * Trying 127.0.0.1:8080...
 * Connected to localhost (127.0.0.1) port 8080 (#0)

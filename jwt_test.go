@@ -13,14 +13,14 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTokenParsingError_Is(t *testing.T) {
 	err := errors.New("parsing error")
-	given := echo.ErrUnauthorized.SetInternal(&TokenParsingError{Err: err})
+	given := echo.ErrUnauthorized.Wrap(&TokenParsingError{Err: err})
 
 	assert.True(t, errors.Is(given, ErrJWTInvalid))
 	assert.True(t, errors.Is(given, err))
@@ -52,7 +52,7 @@ type jwtCustomClaims struct {
 func TestJWT(t *testing.T) {
 	e := echo.New()
 
-	e.GET("/", func(c echo.Context) error {
+	e.GET("/", func(c *echo.Context) error {
 		token := c.Get("user").(*jwt.Token)
 		return c.JSON(http.StatusOK, token.Claims)
 	})
@@ -71,7 +71,7 @@ func TestJWT(t *testing.T) {
 
 func TestJWT_combinations(t *testing.T) {
 	e := echo.New()
-	handler := func(c echo.Context) error {
+	handler := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ"
@@ -110,7 +110,7 @@ func TestJWT_combinations(t *testing.T) {
 				SigningKey:    validKey,
 				SigningMethod: "RS256",
 			},
-			expectError: "code=401, message=invalid or expired jwt, internal=token is unverifiable: error while executing keyfunc: unexpected jwt signing method=HS256",
+			expectError: "code=401, message=invalid or expired jwt, err=token is unverifiable: error while executing keyfunc: unexpected jwt signing method=HS256",
 		},
 		{
 			name:    "Invalid key",
@@ -118,7 +118,7 @@ func TestJWT_combinations(t *testing.T) {
 			config: Config{
 				SigningKey: invalidKey,
 			},
-			expectError: "code=401, message=invalid or expired jwt, internal=token signature is invalid: signature is invalid",
+			expectError: "code=401, message=invalid or expired jwt, err=token signature is invalid: signature is invalid",
 		},
 		{
 			name:    "Valid JWT",
@@ -140,7 +140,7 @@ func TestJWT_combinations(t *testing.T) {
 			hdrAuth: validAuth,
 			config: Config{
 				SigningKey: []byte("secret"),
-				NewClaimsFunc: func(c echo.Context) jwt.Claims {
+				NewClaimsFunc: func(c *echo.Context) jwt.Claims {
 					return &jwtCustomClaims{ // this needs to be pointer to json unmarshalling to work
 						jwtCustomInfo: jwtCustomInfo{
 							Name:  "John Doe",
@@ -156,14 +156,14 @@ func TestJWT_combinations(t *testing.T) {
 			config: Config{
 				SigningKey: validKey,
 			},
-			expectError: "code=401, message=missing or malformed jwt, internal=invalid value in request header",
+			expectError: "code=401, message=missing or malformed jwt, err=invalid value in request header",
 		},
 		{
 			name: "Empty header auth field",
 			config: Config{
 				SigningKey: validKey,
 			},
-			expectError: "code=401, message=missing or malformed jwt, internal=invalid value in request header",
+			expectError: "code=401, message=missing or malformed jwt, err=invalid value in request header",
 		},
 		{
 			name: "Valid query method",
@@ -180,7 +180,7 @@ func TestJWT_combinations(t *testing.T) {
 				TokenLookup: "query:jwt",
 			},
 			reqURL:      "/?a=b&jwtxyz=" + token,
-			expectError: "code=401, message=missing or malformed jwt, internal=missing value in the query string",
+			expectError: "code=401, message=missing or malformed jwt, err=missing value in the query string",
 		},
 		{
 			name: "Invalid query param value",
@@ -189,7 +189,7 @@ func TestJWT_combinations(t *testing.T) {
 				TokenLookup: "query:jwt",
 			},
 			reqURL:      "/?a=b&jwt=invalid-token",
-			expectError: "code=401, message=invalid or expired jwt, internal=token is malformed: token contains an invalid number of segments",
+			expectError: "code=401, message=invalid or expired jwt, err=token is malformed: token contains an invalid number of segments",
 		},
 		{
 			name: "Empty query",
@@ -198,7 +198,7 @@ func TestJWT_combinations(t *testing.T) {
 				TokenLookup: "query:jwt",
 			},
 			reqURL:      "/?a=b",
-			expectError: "code=401, message=missing or malformed jwt, internal=missing value in the query string",
+			expectError: "code=401, message=missing or malformed jwt, err=missing value in the query string",
 		},
 		{
 			config: Config{
@@ -231,7 +231,7 @@ func TestJWT_combinations(t *testing.T) {
 				TokenLookup: "cookie:jwt",
 			},
 			hdrCookie:   "jwt=invalid",
-			expectError: "code=401, message=invalid or expired jwt, internal=token is malformed: token contains an invalid number of segments",
+			expectError: "code=401, message=invalid or expired jwt, err=token is malformed: token contains an invalid number of segments",
 		},
 		{
 			name: "Empty cookie",
@@ -239,7 +239,7 @@ func TestJWT_combinations(t *testing.T) {
 				SigningKey:  validKey,
 				TokenLookup: "cookie:jwt",
 			},
-			expectError: "code=401, message=missing or malformed jwt, internal=missing value in cookies",
+			expectError: "code=401, message=missing or malformed jwt, err=missing value in cookies",
 		},
 		{
 			name: "Valid form method",
@@ -256,7 +256,7 @@ func TestJWT_combinations(t *testing.T) {
 				TokenLookup: "form:jwt",
 			},
 			formValues:  map[string]string{"jwt": "invalid"},
-			expectError: "code=401, message=invalid or expired jwt, internal=token is malformed: token contains an invalid number of segments",
+			expectError: "code=401, message=invalid or expired jwt, err=token is malformed: token contains an invalid number of segments",
 		},
 		{
 			name: "Empty form field",
@@ -264,7 +264,7 @@ func TestJWT_combinations(t *testing.T) {
 				SigningKey:  validKey,
 				TokenLookup: "form:jwt",
 			},
-			expectError: "code=401, message=missing or malformed jwt, internal=missing value in the form",
+			expectError: "code=401, message=missing or malformed jwt, err=missing value in the form",
 		},
 	}
 
@@ -292,8 +292,9 @@ func TestJWT_combinations(t *testing.T) {
 			c := e.NewContext(req, res)
 
 			if tc.reqURL == "/"+token {
-				c.SetParamNames("jwt")
-				c.SetParamValues(token)
+				c.SetPathValues(echo.PathValues{
+					{Name: "jwt", Value: token},
+				})
 			}
 
 			mw, err := tc.config.ToMiddleware()
@@ -327,7 +328,7 @@ func TestJWT_combinations(t *testing.T) {
 
 func TestJWTwithKID(t *testing.T) {
 	e := echo.New()
-	handler := func(c echo.Context) error {
+	handler := func(c *echo.Context) error {
 		return c.String(http.StatusOK, "test")
 	}
 
@@ -422,14 +423,14 @@ func TestConfig_skipper(t *testing.T) {
 	e := echo.New()
 
 	e.Use(WithConfig(Config{
-		Skipper: func(context echo.Context) bool {
+		Skipper: func(context *echo.Context) bool {
 			return true // skip everything
 		},
 		SigningKey: []byte("secret"),
 	}))
 
 	isCalled := false
-	e.GET("/", func(c echo.Context) error {
+	e.GET("/", func(c *echo.Context) error {
 		isCalled = true
 		return c.String(http.StatusTeapot, "test")
 	})
@@ -444,13 +445,13 @@ func TestConfig_skipper(t *testing.T) {
 
 func TestConfig_BeforeFunc(t *testing.T) {
 	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
+	e.GET("/", func(c *echo.Context) error {
 		return c.String(http.StatusTeapot, "test")
 	})
 
 	isCalled := false
 	e.Use(WithConfig(Config{
-		BeforeFunc: func(context echo.Context) {
+		BeforeFunc: func(context *echo.Context) {
 			isCalled = true
 		},
 		SigningKey: []byte("secret"),
@@ -476,7 +477,7 @@ func TestConfig_ErrorHandling(t *testing.T) {
 			name: "ok, ErrorHandler is executed",
 			given: Config{
 				SigningKey: []byte("secret"),
-				ErrorHandler: func(c echo.Context, err error) error {
+				ErrorHandler: func(c *echo.Context, err error) error {
 					return echo.NewHTTPError(http.StatusTeapot, "custom_error")
 				},
 			},
@@ -486,7 +487,7 @@ func TestConfig_ErrorHandling(t *testing.T) {
 			name: "ok, extractor errors are distinguishable as TokenExtractionError",
 			given: Config{
 				SigningKey: []byte("secret"),
-				ErrorHandler: func(c echo.Context, err error) error {
+				ErrorHandler: func(c *echo.Context, err error) error {
 					var extratorErr *TokenExtractionError
 					if !errors.As(err, &extratorErr) {
 						panic("must get TokenExtractionError")
@@ -500,7 +501,7 @@ func TestConfig_ErrorHandling(t *testing.T) {
 			name: "ok, token parsing errors are distinguishable as TokenParsingError",
 			given: Config{
 				SigningKey: []byte("secret"),
-				ErrorHandler: func(c echo.Context, err error) error {
+				ErrorHandler: func(c *echo.Context, err error) error {
 					var tpErr *TokenParsingError
 					if !errors.As(err, &tpErr) {
 						panic("must get TokenParsingError")
@@ -520,7 +521,7 @@ func TestConfig_ErrorHandling(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
-			h := func(c echo.Context) error {
+			h := func(c *echo.Context) error {
 				return c.String(http.StatusNotImplemented, "should not end up here")
 			}
 
@@ -550,7 +551,7 @@ func TestConfig_parseTokenErrorHandling(t *testing.T) {
 		{
 			name: "ok, ErrorHandler is executed",
 			given: Config{
-				ErrorHandler: func(c echo.Context, err error) error {
+				ErrorHandler: func(c *echo.Context, err error) error {
 					return echo.NewHTTPError(http.StatusTeapot, "ErrorHandler: "+err.Error())
 				},
 			},
@@ -562,13 +563,13 @@ func TestConfig_parseTokenErrorHandling(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
 			//e.Debug = true
-			e.GET("/", func(c echo.Context) error {
+			e.GET("/", func(c *echo.Context) error {
 				return c.String(http.StatusNotImplemented, "should not end up here")
 			})
 
 			config := tc.given
 			parseTokenCalled := false
-			config.ParseTokenFunc = func(c echo.Context, auth string) (interface{}, error) {
+			config.ParseTokenFunc = func(c *echo.Context, auth string) (interface{}, error) {
 				parseTokenCalled = true
 				return nil, errors.New("parsing failed")
 			}
@@ -589,7 +590,7 @@ func TestConfig_parseTokenErrorHandling(t *testing.T) {
 
 func TestConfig_custom_ParseTokenFunc_Keyfunc(t *testing.T) {
 	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
+	e.GET("/", func(c *echo.Context) error {
 		return c.String(http.StatusTeapot, "test")
 	})
 
@@ -598,7 +599,7 @@ func TestConfig_custom_ParseTokenFunc_Keyfunc(t *testing.T) {
 	signingKey := []byte("secret")
 
 	config := Config{
-		ParseTokenFunc: func(c echo.Context, auth string) (interface{}, error) {
+		ParseTokenFunc: func(c *echo.Context, auth string) (interface{}, error) {
 			keyFunc := func(t *jwt.Token) (interface{}, error) {
 				if t.Method.Alg() != "HS256" {
 					return nil, fmt.Errorf("unexpected jwt signing method=%v", t.Header["alg"])
@@ -631,17 +632,17 @@ func TestConfig_custom_ParseTokenFunc_Keyfunc(t *testing.T) {
 func TestMustJWTWithConfig_SuccessHandler(t *testing.T) {
 	e := echo.New()
 
-	e.GET("/", func(c echo.Context) error {
+	e.GET("/", func(c *echo.Context) error {
 		success := c.Get("success").(string)
 		user := c.Get("user").(string)
 		return c.String(http.StatusTeapot, fmt.Sprintf("%v:%v", success, user))
 	})
 
 	mw, err := Config{
-		ParseTokenFunc: func(c echo.Context, auth string) (interface{}, error) {
+		ParseTokenFunc: func(c *echo.Context, auth string) (interface{}, error) {
 			return auth, nil
 		},
-		SuccessHandler: func(c echo.Context) {
+		SuccessHandler: func(c *echo.Context) {
 			c.Set("success", "yes")
 		},
 	}.ToMiddleware()
@@ -661,7 +662,7 @@ func TestJWTWithConfig_ContinueOnIgnoredError(t *testing.T) {
 	var testCases = []struct {
 		name                        string
 		givenContinueOnIgnoredError bool
-		givenErrorHandler           func(c echo.Context, err error) error
+		givenErrorHandler           func(c *echo.Context, err error) error
 		givenTokenLookup            string
 		whenAuthHeaders             []string
 		whenCookies                 []string
@@ -674,7 +675,7 @@ func TestJWTWithConfig_ContinueOnIgnoredError(t *testing.T) {
 		{
 			name:                        "ok, with valid JWT from auth header",
 			givenContinueOnIgnoredError: true,
-			givenErrorHandler: func(c echo.Context, err error) error {
+			givenErrorHandler: func(c *echo.Context, err error) error {
 				return nil
 			},
 			whenAuthHeaders: []string{"Bearer valid_token_base64"},
@@ -685,7 +686,7 @@ func TestJWTWithConfig_ContinueOnIgnoredError(t *testing.T) {
 		{
 			name:                        "ok, missing header, callNext and set public_token from error handler",
 			givenContinueOnIgnoredError: true,
-			givenErrorHandler: func(c echo.Context, err error) error {
+			givenErrorHandler: func(c *echo.Context, err error) error {
 				var extratorErr *TokenExtractionError
 				if !errors.As(err, &extratorErr) {
 					panic("must get TokenExtractionError")
@@ -700,7 +701,7 @@ func TestJWTWithConfig_ContinueOnIgnoredError(t *testing.T) {
 		{
 			name:                        "ok, invalid token, callNext and set public_token from error handler",
 			givenContinueOnIgnoredError: true,
-			givenErrorHandler: func(c echo.Context, err error) error {
+			givenErrorHandler: func(c *echo.Context, err error) error {
 				// this is probably not realistic usecase. on parse error you probably want to return error
 				if err.Error() != "parser_error" {
 					panic("must get parser_error")
@@ -716,7 +717,7 @@ func TestJWTWithConfig_ContinueOnIgnoredError(t *testing.T) {
 		{
 			name:                        "nok, invalid token, return error from error handler",
 			givenContinueOnIgnoredError: true,
-			givenErrorHandler: func(c echo.Context, err error) error {
+			givenErrorHandler: func(c *echo.Context, err error) error {
 				if err.Error() != "parser_error" {
 					panic("must get parser_error")
 				}
@@ -730,7 +731,7 @@ func TestJWTWithConfig_ContinueOnIgnoredError(t *testing.T) {
 		{
 			name:                        "nok, ContinueOnIgnoredError but return error from error handler",
 			givenContinueOnIgnoredError: true,
-			givenErrorHandler: func(c echo.Context, err error) error {
+			givenErrorHandler: func(c *echo.Context, err error) error {
 				return echo.ErrUnauthorized
 			},
 			whenAuthHeaders: []string{}, // no JWT header
@@ -740,7 +741,7 @@ func TestJWTWithConfig_ContinueOnIgnoredError(t *testing.T) {
 		{
 			name:                        "nok, ContinueOnIgnoredError=false",
 			givenContinueOnIgnoredError: false,
-			givenErrorHandler: func(c echo.Context, err error) error {
+			givenErrorHandler: func(c *echo.Context, err error) error {
 				return echo.ErrUnauthorized
 			},
 			whenAuthHeaders: []string{}, // no JWT header
@@ -753,7 +754,7 @@ func TestJWTWithConfig_ContinueOnIgnoredError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
 
-			e.GET("/", func(c echo.Context) error {
+			e.GET("/", func(c *echo.Context) error {
 				token := c.Get("user").(string)
 				return c.String(http.StatusTeapot, token)
 			})
@@ -761,7 +762,7 @@ func TestJWTWithConfig_ContinueOnIgnoredError(t *testing.T) {
 			mw, err := Config{
 				ContinueOnIgnoredError: tc.givenContinueOnIgnoredError,
 				TokenLookup:            tc.givenTokenLookup,
-				ParseTokenFunc: func(c echo.Context, auth string) (interface{}, error) {
+				ParseTokenFunc: func(c *echo.Context, auth string) (interface{}, error) {
 					return tc.whenParseReturn, tc.whenParseError
 				},
 				ErrorHandler: tc.givenErrorHandler,
@@ -785,7 +786,7 @@ func TestJWTWithConfig_ContinueOnIgnoredError(t *testing.T) {
 func TestConfig_TokenLookupFuncs(t *testing.T) {
 	e := echo.New()
 
-	e.GET("/", func(c echo.Context) error {
+	e.GET("/", func(c *echo.Context) error {
 		token := c.Get("user").(*jwt.Token)
 		return c.JSON(http.StatusOK, token.Claims)
 	})
@@ -793,8 +794,8 @@ func TestConfig_TokenLookupFuncs(t *testing.T) {
 	e.Use(WithConfig(Config{
 		SigningKey: []byte("secret"),
 		TokenLookupFuncs: []middleware.ValuesExtractor{
-			func(c echo.Context) ([]string, error) {
-				return []string{c.Request().Header.Get("X-API-Key")}, nil
+			func(c *echo.Context) ([]string, middleware.ExtractorSource, error) {
+				return []string{c.Request().Header.Get("X-API-Key")}, middleware.ExtractorSourceHeader, nil
 			},
 		},
 	}))
@@ -841,7 +842,7 @@ func TestDataRacesOnParallelExecution(t *testing.T) {
 	}
 
 	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
+	e.GET("/", func(c *echo.Context) error {
 		token := c.Get("user").(*jwt.Token)
 		return c.JSON(http.StatusTeapot, token.Claims)
 	})
