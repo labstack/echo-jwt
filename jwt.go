@@ -22,7 +22,9 @@ type Config struct {
 	BeforeFunc middleware.BeforeFunc
 
 	// SuccessHandler defines a function which is executed for a valid token.
-	SuccessHandler func(c *echo.Context)
+	// In case SuccessHandler error the middleware stops handler chain execution and
+	// returns error.
+	SuccessHandler func(c *echo.Context) error
 
 	// ErrorHandler defines a function which is executed when all lookups have been done and none of them passed Validator
 	// function. ErrorHandler is executed with last missing (ErrExtractionValueMissing) or an invalid key.
@@ -244,7 +246,9 @@ func (config Config) ToMiddleware() (echo.MiddlewareFunc, error) {
 					// Store user information from token into context.
 					c.Set(config.ContextKey, token)
 					if config.SuccessHandler != nil {
-						config.SuccessHandler(c)
+						if sErr := config.SuccessHandler(c); sErr != nil {
+							return sErr
+						}
 					}
 					return next(c)
 				}
