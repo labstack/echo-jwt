@@ -6,14 +6,15 @@ package echojwt_test
 import (
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
-	echojwt "github.com/labstack/echo-jwt/v4"
-	"github.com/labstack/echo/v4"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	echojwt "github.com/labstack/echo-jwt/v5"
+	"github.com/labstack/echo/v5"
 )
 
 func ExampleWithConfig_usage() {
@@ -23,7 +24,7 @@ func ExampleWithConfig_usage() {
 		SigningKey: []byte("secret"),
 	}))
 
-	e.GET("/", func(c echo.Context) error {
+	e.GET("/", func(c *echo.Context) error {
 		// make sure that your imports are correct versions. for example if you use `"github.com/golang-jwt/jwt"` as
 		// import this cast will fail and `"github.com/golang-jwt/jwt/v5"` will succeed.
 		// Although `.(*jwt.Token)` looks exactly the same for both packages but this struct is still different

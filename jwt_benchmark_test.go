@@ -1,17 +1,18 @@
 package echojwt
 
 import (
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/labstack/echo/v5"
 )
 
 func BenchmarkJWTSuccessPath(b *testing.B) {
 	e := echo.New()
 
-	e.GET("/", func(c echo.Context) error {
+	e.GET("/", func(c *echo.Context) error {
 		token := c.Get("user").(*jwt.Token)
 		return c.JSON(http.StatusTeapot, token.Claims)
 	})
@@ -40,7 +41,7 @@ func BenchmarkJWTSuccessPath(b *testing.B) {
 func BenchmarkJWTErrorPath(b *testing.B) {
 	e := echo.New()
 
-	e.GET("/", func(c echo.Context) error {
+	e.GET("/", func(c *echo.Context) error {
 		token := c.Get("user").(*jwt.Token)
 		return c.JSON(http.StatusTeapot, token.Claims)
 	})
