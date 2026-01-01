@@ -642,8 +642,9 @@ func TestMustJWTWithConfig_SuccessHandler(t *testing.T) {
 		ParseTokenFunc: func(c *echo.Context, auth string) (interface{}, error) {
 			return auth, nil
 		},
-		SuccessHandler: func(c *echo.Context) {
+		SuccessHandler: func(c *echo.Context) error {
 			c.Set("success", "yes")
+			return nil
 		},
 	}.ToMiddleware()
 	assert.NoError(t, err)
@@ -656,6 +657,33 @@ func TestMustJWTWithConfig_SuccessHandler(t *testing.T) {
 
 	assert.Equal(t, "yes:valid_token_base64", res.Body.String())
 	assert.Equal(t, http.StatusTeapot, res.Code)
+}
+
+func TestMustJWTWithConfig_SuccessHandlerError(t *testing.T) {
+	e := echo.New()
+
+	e.GET("/", func(c *echo.Context) error {
+		return c.String(http.StatusTeapot, "should not end up here")
+	})
+
+	mw, err := Config{
+		ParseTokenFunc: func(c *echo.Context, auth string) (interface{}, error) {
+			return auth, nil
+		},
+		SuccessHandler: func(c *echo.Context) error {
+			return echo.ErrForbidden.Wrap(errors.New("nope"))
+		},
+	}.ToMiddleware()
+	assert.NoError(t, err)
+	e.Use(mw)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Add(echo.HeaderAuthorization, "Bearer valid_token_base64")
+	res := httptest.NewRecorder()
+	e.ServeHTTP(res, req)
+
+	assert.Equal(t, "{\"message\":\"Forbidden\"}\n", res.Body.String())
+	assert.Equal(t, http.StatusForbidden, res.Code)
 }
 
 func TestJWTWithConfig_ContinueOnIgnoredError(t *testing.T) {
