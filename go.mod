@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
-	github.com/labstack/echo/v5 v5.0.0-20260101135421-ec9232814e7b
+	github.com/labstack/echo/v5 v5.0.0
 	github.com/stretchr/testify v1.11.1
 )
 
