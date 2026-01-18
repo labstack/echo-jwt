@@ -1,6 +1,6 @@
 # Changelog
 
-## v5.0.0 - TBA
+## v5.0.0 - 2026-01.18
 
 * Echo v5 support
 
